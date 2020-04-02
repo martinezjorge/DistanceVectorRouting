@@ -8,6 +8,11 @@ class Message:
 
         Message that routers will use to update their routing tables.
 
+        TODO
+            Set default values
+            Add Error Handling
+            Unit Tests as the project becomes more coherent
+
     """
 
     def __init__(self,
