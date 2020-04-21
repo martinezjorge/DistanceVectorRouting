@@ -19,7 +19,7 @@ class Node():
         self.table.loc[inc_node] = new_table.loc[inc_node]
         #update info
         for c in df.columns:
-            test_node.table.loc[self.id, c] = dist(c, inc_node)
+            test_node.table.loc[self.id, c] = self.dist(c, inc_node)
             
         
 
@@ -35,7 +35,11 @@ if __name__ == "__main__":
 
     test_node2 = Node(name2, df2)
     test_node.update("x", test_node2.table)
+    print("-"*8)
+    
     print(test_node.table)
+
+    print(test_node2.table)
 
 
     
