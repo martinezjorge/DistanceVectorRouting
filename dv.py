@@ -8,18 +8,20 @@ class Node():
         self.table = pd.DataFrame(data = p_inf, index = ["w", "x", "y", "z"], columns  = ["w", "x", "y", "z"])
         self.table.loc[id] = start.loc[0]
 
-    def dist(self, target, inc_node):
-            cost = self.table.loc[self.id, inc_node]
-            dist_to = self.table.loc[inc_node, target]
-            cur_dist = self.table.loc[self.id, target]
-            return( min(cost + dist_to, cur_dist) )
+    def dist(self, target):
+            new_dist = []
+            for c in self.table.columns:
+                cost = self.table.loc[c, self.id]
+                dist_to = self.table.loc[c, target]
+                new_dist.append(cost + dist_to)
+            return( min(new_dist) )
 
     def update(self, inc_node, new_table):
         #set current info to  incoming
         self.table.loc[inc_node] = new_table.loc[inc_node]
         #update info
-        for c in df.columns:
-            test_node.table.loc[self.id, c] = self.dist(c, inc_node)
+        for c in self.table.columns:
+            test_node.table.loc[self.id, c] = self.dist(c)
             
         
 
