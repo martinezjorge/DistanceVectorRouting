@@ -3,9 +3,10 @@ import socket
 import argparse
 import selectors
 import types
+import message
 
 
-class Peer:
+class Node:
     _args = ""
     _available_commands = ['help', 'myip', 'myport', 'connect', 'list', 'terminate', 'send', 'exit']
     _input = None
