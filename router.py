@@ -35,7 +35,6 @@ class Peer:
     def run(self):
         try:
             while self.is_running:
-                # events = self.client_sel.select(timeout=1)
                 self._input = input(">> ")
                 self._args = self._input.split(' ')
                 if self._args[0] not in self._available_commands:
@@ -48,7 +47,7 @@ class Peer:
     def func_help(self):
         print("Command\t\t\t\t\tDescription")
         print("help\t\t\t\t\tPulls this up.")
-        print("myyp\t\t\t\t\tPrints your computer's ip address.")
+        print("myip\t\t\t\t\tPrints your computer's ip address.")
         print("myport\t\t\t\t\tPrints the port this program is communicating through.")
         print("connect<destination><port>\t\tCreates new connection to specified destination at the specified port.")
         print("list\t\t\t\t\tDisplays a numbered list of connections.")
@@ -91,7 +90,8 @@ class Peer:
         try:
             idx = int(self._args[1])
         except IndexError:
-            print("You're missing some arguments for the terminate command. Type help to see what arguments it requires.")
+            print("You're missing some arguments for the terminate command. "
+                  "Type help to see what arguments it requires.")
         else:
             try:
                 self.sockets[idx].send(f"{self.my_ip} has terminated their connection!".encode())
@@ -108,6 +108,8 @@ class Peer:
             idx = int(self._args[1])
         except IndexError:
             print("You're missing some arguments for the send command. Type help to see what arguments it requires.")
+        except ValueError:
+            print("Don't forget to put an integer specifying who you are sending the message to!")
         else:
             message = " ".join(self._args[2:])
             try:
@@ -139,7 +141,12 @@ class Peer:
         sock = key.fileobj
         data = key.data
         if mask & selectors.EVENT_READ:
-            recv_data = sock.recv(1024)  # Should be ready to read
+
+            try:
+                recv_data = sock.recv(1024)  # Should be ready to read
+            except ConnectionResetError:
+                recv_data = False
+
             if recv_data:
                 data.outb += recv_data
             else:
