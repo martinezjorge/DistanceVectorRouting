@@ -6,7 +6,7 @@ class Node():
     def __init__(self, id:str, start:pd.DataFrame):
         self.id = id
         self.table = pd.DataFrame(data = p_inf, index = ["w", "x", "y", "z"], columns  = ["w", "x", "y", "z"])
-        self.table.loc[id] = start.loc[0]
+        self.table.loc[id] = start.loc[id]
 
     def _dist(self, target):
         new_dist = []
