@@ -9,12 +9,12 @@ class Node():
         self.table.loc[id] = start.loc[0]
 
     def dist(self, target):
-            new_dist = []
-            for c in self.table.columns:
-                cost = self.table.loc[c, self.id]
-                dist_to = self.table.loc[c, target]
-                new_dist.append(cost + dist_to)
-            return( min(new_dist) )
+        new_dist = []
+        for n in self.table.columns:
+            cost = self.table.loc[self.id, n]
+            dist_to = self.table.loc[n, target]
+            new_dist.append(cost + dist_to)
+        return( min(new_dist) )
 
     def update(self, inc_node, new_table):
         #set current info to  incoming
