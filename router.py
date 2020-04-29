@@ -3,10 +3,10 @@ import socket
 import argparse
 import selectors
 import types
-import message
+import dv
 
 
-class Node:
+class Router:
     _args = ""
     _available_commands = ['help', 'myip', 'myport', 'connect', 'list', 'terminate', 'send', 'exit']
     _input = None
@@ -199,4 +199,4 @@ if __name__ == "__main__":
     parser.add_argument("port", nargs=1)
     args = parser.parse_args()
 
-    Peer(args.port[0])
+    Router(args.port[0])
