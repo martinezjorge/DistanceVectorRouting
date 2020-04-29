@@ -4,6 +4,7 @@ import argparse
 import selectors
 import types
 import dv
+import helper
 
 
 class Router:
@@ -16,8 +17,8 @@ class Router:
                            'terminate',
                            'send',
                            'exit',
-                           'send_table',
-                           'request_tables']
+                           'request_tables',
+                           'connect_to_neighbors']
     _input = None
     connections = []
     is_running = True
@@ -36,7 +37,9 @@ class Router:
         self.my_ip = s.getsockname()[0]
         s.close()
 
-        self.routing_table = self.get_routing_table(file)
+        self.neighbors = []
+
+        self.routing_table, self.neighbors = helper.read_topolofy_file(file)
 
         self.my_port = port
         # Run the server
@@ -54,7 +57,7 @@ class Router:
                     self.send_routing_table_to_neighbors(self.routing_table)
                     self.periodic_counter = 0
                 elif self.send_request:
-                    self.send_routing_table_to_neighbors(self.routing_table)
+                    self.send_table_from_neighbors(self.routing_table)
                 else:
                     self._input = input(">> ")
                     self._args = self._input.split(' ')
@@ -150,12 +153,20 @@ class Router:
         exit(0)
         print("after exit(0) in exit function")
 
-    def func_send_table(self):
+    def send_table_to_neighbors(self):
         """ loop through all the neighbors and send each of them the table using the send command """
         pass
 
-    def func_request_tables(self):
+    def send_table_to_neighbor(self):
+        """ send table to a specific neighbor """
+        pass
+
+    def func_request_table_from_neighbors(self):
         """ loop through all the neighbors and request their tables """
+        pass
+
+    def func_request_table_from_neighbor(self):
+        """ request a table from a specific neighbor """
         pass
 
     def accept_wrapper(self, sock):
