@@ -151,10 +151,12 @@ class Router:
         print("after exit(0) in exit function")
 
     def func_send_table(self):
-        # loop through all the neighbors and send each of them the table using the send command
+        """ loop through all the neighbors and send each of them the table using the send command """
         pass
 
-
+    def func_request_tables(self):
+        """ loop through all the neighbors and request their tables """
+        pass
 
     def accept_wrapper(self, sock):
         """ Helper function for the server. Accepts connections from peers. """
