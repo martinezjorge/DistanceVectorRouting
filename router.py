@@ -23,11 +23,10 @@ class Router:
     is_running = True
     sockets = []
     timeout = 2
-    sendRequest = False
-    periodicCounter =
+    send_request = False
+    periodic_counter = 0
 
-
-    def __init__(self, port):
+    def __init__(self, port, file):
         """ Initialize Things"""
         self.server_sel = selectors.DefaultSelector()
 
@@ -36,6 +35,8 @@ class Router:
         s.connect(('8.8.8.8', 12000))
         self.my_ip = s.getsockname()[0]
         s.close()
+
+        self.routing_table = self.get_routing_table(file)
 
         self.my_port = port
         # Run the server
@@ -48,12 +49,21 @@ class Router:
     def run(self):
         try:
             while self.is_running:
-                self._input = input(">> ")
-                self._args = self._input.split(' ')
-                if self._args[0] not in self._available_commands:
-                    print("Invalid command '{}' - type 'help' to get the available commands".format(self._input))
+
+                if self.periodic_counter == 500:
+                    self.send_routing_table_to_neighbors(self.routing_table)
+                    self.periodic_counter = 0
+                elif self.send_request:
+                    self.send_routing_table_to_neighbors(self.routing_table)
                 else:
-                    getattr(self, 'func_' + self._args[0])()
+                    self._input = input(">> ")
+                    self._args = self._input.split(' ')
+                    if self._args[0] not in self._available_commands:
+                        print("Invalid command '{}' - type 'help' to get the available commands".format(self._input))
+                    else:
+                        getattr(self, 'func_' + self._args[0])()
+
+                self.periodic_counter += 1
         except KeyboardInterrupt:
             print("caught keyboard interrupt, exiting")
 

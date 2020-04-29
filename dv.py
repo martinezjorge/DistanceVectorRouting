@@ -6,8 +6,7 @@ p_inf = float("inf")
 class Node:
     def __init__(self, id: str, start: pd.DataFrame):
         self.id = id
-        self.table = pd.DataFrame(data=p_inf, index=["w", "x", "y", "z"], columns=["w", "x", "y", "z"])
-        # self.table = pd.DataFrame(data=p_inf, index=False, columns=["w", "x", "y", "z"])
+        self.table = pd.DataFrame(data=p_inf, index=[1, 2, 3, 4], columns=[1, 2, 3, 4])
         print(start)
 
         self.table.loc[id] = start.loc[id]
