@@ -30,13 +30,13 @@ class Node:
 
 if __name__ == "__main__":
     name = "w"
-    df = pd.read_csv("./w.csv")
+    df = pd.read_csv("./w.csv", index_col='id')
 
     test_node = Node(name, df)
     print(test_node.table)
 
     name2 = "x"
-    df2 = pd.read_csv("./x.csv")
+    df2 = pd.read_csv("./x.csv", index_col='id')
 
     test_node2 = Node(name2, df2)
     test_node.update(name2, test_node2.table)

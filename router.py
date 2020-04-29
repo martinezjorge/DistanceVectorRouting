@@ -8,12 +8,24 @@ import dv
 
 class Router:
     _args = ""
-    _available_commands = ['help', 'myip', 'myport', 'connect', 'list', 'terminate', 'send', 'exit']
+    _available_commands = ['help',
+                           'myip',
+                           'myport',
+                           'connect',
+                           'list',
+                           'terminate',
+                           'send',
+                           'exit',
+                           'send_table',
+                           'request_tables']
     _input = None
     connections = []
     is_running = True
     sockets = []
     timeout = 2
+    sendRequest = False
+    periodicCounter =
+
 
     def __init__(self, port):
         """ Initialize Things"""
@@ -128,6 +140,12 @@ class Router:
         exit(0)
         print("after exit(0) in exit function")
 
+    def func_send_table(self):
+        # loop through all the neighbors and send each of them the table using the send command
+        pass
+
+
+
     def accept_wrapper(self, sock):
         """ Helper function for the server. Accepts connections from peers. """
         conn, addr = sock.accept()  # Should be ready to read
@@ -197,6 +215,7 @@ class Router:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("port", nargs=1)
+    parser.add_argument("file", nargs=1)
     args = parser.parse_args()
 
-    Router(args.port[0])
+    Router(args.port[0], args.file[0])
