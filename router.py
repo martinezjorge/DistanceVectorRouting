@@ -3,19 +3,30 @@ import socket
 import argparse
 import selectors
 import types
-import message
+import dv
 
 
-class Node:
+class Router:
     _args = ""
-    _available_commands = ['help', 'myip', 'myport', 'connect', 'list', 'terminate', 'send', 'exit']
+    _available_commands = ['help',
+                           'myip',
+                           'myport',
+                           'connect',
+                           'list',
+                           'terminate',
+                           'send',
+                           'exit',
+                           'send_table',
+                           'request_tables']
     _input = None
     connections = []
     is_running = True
     sockets = []
     timeout = 2
+    send_request = False
+    periodic_counter = 0
 
-    def __init__(self, port):
+    def __init__(self, port, file):
         """ Initialize Things"""
         self.server_sel = selectors.DefaultSelector()
 
@@ -24,6 +35,8 @@ class Node:
         s.connect(('8.8.8.8', 12000))
         self.my_ip = s.getsockname()[0]
         s.close()
+
+        self.routing_table = self.get_routing_table(file)
 
         self.my_port = port
         # Run the server
@@ -36,12 +49,21 @@ class Node:
     def run(self):
         try:
             while self.is_running:
-                self._input = input(">> ")
-                self._args = self._input.split(' ')
-                if self._args[0] not in self._available_commands:
-                    print("Invalid command '{}' - type 'help' to get the available commands".format(self._input))
+
+                if self.periodic_counter == 500:
+                    self.send_routing_table_to_neighbors(self.routing_table)
+                    self.periodic_counter = 0
+                elif self.send_request:
+                    self.send_routing_table_to_neighbors(self.routing_table)
                 else:
-                    getattr(self, 'func_' + self._args[0])()
+                    self._input = input(">> ")
+                    self._args = self._input.split(' ')
+                    if self._args[0] not in self._available_commands:
+                        print("Invalid command '{}' - type 'help' to get the available commands".format(self._input))
+                    else:
+                        getattr(self, 'func_' + self._args[0])()
+
+                self.periodic_counter += 1
         except KeyboardInterrupt:
             print("caught keyboard interrupt, exiting")
 
@@ -128,6 +150,14 @@ class Node:
         exit(0)
         print("after exit(0) in exit function")
 
+    def func_send_table(self):
+        """ loop through all the neighbors and send each of them the table using the send command """
+        pass
+
+    def func_request_tables(self):
+        """ loop through all the neighbors and request their tables """
+        pass
+
     def accept_wrapper(self, sock):
         """ Helper function for the server. Accepts connections from peers. """
         conn, addr = sock.accept()  # Should be ready to read
@@ -197,6 +227,7 @@ class Node:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("port", nargs=1)
+    parser.add_argument("file", nargs=1)
     args = parser.parse_args()
 
-    Peer(args.port[0])
+    Router(args.port[0], args.file[0])
