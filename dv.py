@@ -24,7 +24,7 @@ class Node:
         self.table.loc[inc_node] = new_table.loc[inc_node]
         # update info
         for c in self.table.columns:
-            test_node.table.loc[self.id, c] = self._dist(c)
+            self.table.loc[self.id, c] = self._dist(c)
             
 
 if __name__ == "__main__":

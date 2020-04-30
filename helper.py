@@ -7,16 +7,18 @@ def read_topology_file(filepath):
         data = json.load(f)
         df = pd.DataFrame(
             index=[i for i in range(data['num_servers'])],
-            columns=[i for i in range(data['num_servers'])]+['ip'],
+            columns=[i for i in range(data['num_servers'])]+['ip', 'port', 'recv_port'],
         )
         neightbors = []
         for ix, (ip, cost) in enumerate(data['ip_costs'].items()):
-            df.at[ix, 'ip'] = ip
+            _ip, _port = ip.split(":")
+            df.at[ix, 'ip'] = _ip
+            df.at[ix, 'port'] = _port
             df.at[data['id'], ix] = cost
             if cost is not None and data['id'] != ix:
                 neightbors += [ix]
         df.fillna(float('inf'), inplace=True)
-        return df, neightbors
+        return data['id'], df, neightbors, data
 
 if __name__ == "__main__":
     # test function
