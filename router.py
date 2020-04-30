@@ -37,8 +37,9 @@ class Router:
     send_request = False
     packet_count = 0
 
-    def __init__(self, port):
+    def __init__(self, id, port):
         """ Initialize Things"""
+        self.id = id
         self.server_sel = selectors.DefaultSelector()
 
         # Used to get the real ip address of this machine
@@ -97,7 +98,7 @@ class Router:
         print(f"My Port is {self.my_port}")
 
     def func_server(self):
-        self.filepath = self._args[2]
+        self.filepath = "{}/topology{}.json".format(self._args[2], self.id)
         self.update_interval = float(self._args[4])
         self.id, self.routing_table, self.neighbors, data = read_topology_file(self.filepath)
         self.num_servers = data['num_servers']
@@ -305,7 +306,8 @@ class Router:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("id", nargs=1)
     parser.add_argument("port", nargs=1)
     args = parser.parse_args()
 
-    Router(args.port[0])
+    Router(args.id[0], args.port[0])
