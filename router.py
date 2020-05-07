@@ -24,22 +24,24 @@ class Router:
 
                            'update', # modifies the local routing table
                            'step', # send routing table to all neighbors
-                           'packet', # show number of routing tables received since last 'packet' command input
+                           'packets', # show number of routing tables received since last 'packet' command input
                            'display',
                            'server',
                            ]
     _input = None
     connections = []
+    history_of_updates = []
     is_running = True
     update_interval = float('inf')
     sockets = {}
     timeout = 2
     send_request = False
     packet_count = 0
+    n_invalid_command = 0
 
-    def __init__(self, id, port):
+    def __init__(self, port):
         """ Initialize Things"""
-        self.id = id
+        self.id = port
         self.server_sel = selectors.DefaultSelector()
 
         # Used to get the real ip address of this machine
@@ -59,37 +61,46 @@ class Router:
     def run(self):
         try:
             while self.is_running:
-                if hasattr(self, 't0') and (time.time() - self.t0 > self.update_interval):
-                    # periodic send
-                    self.func_step()
-                    self.t0 = time.time()
+                # if hasattr(self, 't0') and (time.time() - self.t0 > self.update_interval):
+                #     # periodic send
+                #     self.func_step()
+                #     self.t0 = time.time()
 
                 # elif self.send_request:
                 #     # when another server requests for the routing table
                 #     self.send_table_to_neighbor()
 
-                else:
-                    # handle user input
-                    self._input = input("{}>> ".format(self.id if hasattr(self, 'id') else ''))
-                    self._args = self._input.split(' ')
-                    if self._args[0] not in self._available_commands:
+                # else:
+                # handle user input
+                self._input = input("(node {}) $ ".format(self.id if hasattr(self, 'id') else 'no-id'))
+                self._args = self._input.split(' ')
+                if self._args[0] not in self._available_commands:
+                    self.n_invalid_command += 1
+                    if self.n_invalid_command % 3 == 0:
                         print("Invalid command '{}' - type 'help' to get the available commands".format(self._input))
-                    else:
-                        getattr(self, 'func_' + self._args[0])()
+                        self.n_invalid_command = 0
+                else:
+                    getattr(self, 'func_' + self._args[0])()
 
         except KeyboardInterrupt:
             print("caught keyboard interrupt, exiting")
 
     def func_help(self):
-        print("Command\t\t\t\t\tDescription")
-        print("help\t\t\t\t\tPulls this up.")
-        print("myip\t\t\t\t\tPrints your computer's ip address.")
-        print("myport\t\t\t\t\tPrints the port this program is communicating through.")
-        print("connect<destination><port>\t\tCreates new connection to specified destination at the specified port.")
-        print("list\t\t\t\t\tDisplays a numbered list of connections.")
-        print("terminate<connection id>\t\tTerminates connection specified by id in numbered list of connections.")
-        print("send<connection_id><message>\t\tSends message to specified peer by id in numbered list of connections.")
-        print("exit\t\t\t\t\tCloses all connections and terminates this process.")
+        print("Command\t\t\t\t\t\tDescription")
+        print("help\t\t\t\t\t\tPulls this up.")
+        print("myip\t\t\t\t\t\tPrints your computer's ip address.")
+        print("myport\t\t\t\t\t\tPrints the port this program is communicating through.")
+        # print("connect<destination><port>\t\tCreates new connection to specified destination at the specified port.")
+        # print("list\t\t\t\t\tDisplays a numbered list of connections.")
+        # print("terminate<connection id>\t\tTerminates connection specified by id in numbered list of connections.")
+        # print("send<connection_id><message>\t\tSends message to specified peer by id in numbered list of connections.")
+        print("server -t <path to file> -i <routing_update_interval>")
+        print("display\t\t\t\t\t\tshow routing table")
+        print("step\t\t\t\t\t\tSend routing tables")
+        print("packets\t\t\t\t\t\tDisplay the number of routing tables received")
+        print("disable <server ID>")
+        print("crash\t\t\t\t\t\tClose this server")
+        # print("exit\t\t\t\t\tCloses all connections and terminates this process.")
 
     def func_myip(self):
         print(f"My IP is {self.my_ip}")
@@ -98,14 +109,19 @@ class Router:
         print(f"My Port is {self.my_port}")
 
     def func_server(self):
+        self.filepath = self._args[2]
         self.filepath = "{}/topology{}.json".format(self._args[2], self.id)
         self.update_interval = float(self._args[4])
+        self.get_topology_file()
+
+        # for ip, port in zip(self.routing_table['ip'], self.routing_table['port']):
+        for neighbor_id in self.neighbors:
+            ip, port = self.routing_table.at[neighbor_id, 'ip'], self.routing_table.at[neighbor_id, 'port']
+            self.connect(ip, port)
+
+    def get_topology_file(self):
         self.id, self.routing_table, self.neighbors, data = read_topology_file(self.filepath)
         self.num_servers = data['num_servers']
-
-        print("Read table:\n{}".format(self.routing_table))
-        for ip, port in zip(self.routing_table['ip'], self.routing_table['port']):
-            self.connect(ip, port)
         self.t0 = time.time()
 
     def connect(self, ip, port):
@@ -130,7 +146,12 @@ class Router:
         return self.routing_table.query("ip == @ip & port == @port").index[0]
 
     def func_display(self):
-        print(self.routing_table)
+        if not hasattr(self, 'routing_table'):
+            return
+        print("From\tTo\tCost")
+        for destination_id in range(self.num_servers):
+            print("{}\t{}\t{}".format(self.id, destination_id, self.routing_table.at[self.id, destination_id]))
+        # print(self.routing_table)
 
     def terminate(self, ip, port):
         s = self.get_socket(ip, port)
@@ -139,8 +160,8 @@ class Router:
         self.set_socket(ip, port, None)
 
     def func_disable(self):
-        server_ix = self._args[1]
-        if server_ix in self.neighbors:
+        server_ix = int(self._args[1])
+        if hasattr(self, 'routing_table') and server_ix in self.neighbors:
             ip = self.routing_table.at[server_ix, 'ip']
             port = self.routing_table.at[server_ix, 'port']
             self.terminate(ip, port)
@@ -150,59 +171,77 @@ class Router:
     def func_exit(self):
         """ Close all the connections and then exit. """
         # close all the sockets
-        for s in self.sockets:
+        for ip_port, socket in self.sockets.items():
             # s.send(f"{self.my_ip} has terminated their connection!".encode())
-            s.close()
-        # self.is_running = False
-        # exit(0)
+            if socket is not None:
+                socket.close()
+        self.is_running = False
+        exit(0)
         print("after exit(0) in exit function")
 
     def func_crash(self):
         self.func_exit()
 
     def func_update(self):
-        server_from, server_to, cost = self._args[1], self._args[2], float(self._args[3])
+        server_from, server_to, cost = int(self._args[1]), int(self._args[2]), float(self._args[3])
+        if cost == 'inf':
+            cost = float('inf')
         self.routing_table.at[server_from, server_to] = cost
+        update_msg = {'conn': [server_from, server_to], 'cost': cost}
+        self.notify_update(update_msg)
 
     def func_step(self):
-        print("Step function")
+        # print("Step function")
         # Send routing table to all neighbors
-        for server_ix in self.neighbors:
-            ip = self.routing_table.at[server_ix, 'ip']
-            port = self.routing_table.at[server_ix, 'port']
-            self.send_table(ip, port)
+        if hasattr(self, 'routing_table'):
+            for server_ix in self.neighbors:
+                ip = self.routing_table.at[server_ix, 'ip']
+                port = self.routing_table.at[server_ix, 'port']
+                self.send_message(ip, port, 'table', self.routing_table.to_json())
+        else:
+            pass
 
-    def send_table(self, ip, port):
+    def send_message(self, ip, port, type, msg):
         socket = self.get_socket(ip, port)
         if socket is not None:
             message = {
-                'type': 'table',
+                'type': type,
                 'id': self.id,
-                'data': self.routing_table.to_json()
+                'data': msg
             }
             message = json.dumps(message)
-            print("Sending to {}".format(self.get_server_ix(ip, port)))
-            socket.send(message.encode())
+            try:
+                socket.send(message.encode())
+            except BrokenPipeError:
+                # no handshake from the other side yet
+                pass
+            # print("Sent to {}".format(self.get_server_ix(ip, port)))
         else:
-            print("Trying to send message to unexisting socket {}:{}".format(ip, port))
-
-        # """ Send a message to the specified connection. """
-        # try:
-        #     idx = int(self._args[1])
-        # except IndexError:
-        #     print("You're missing some arguments for the send command. Type help to see what arguments it requires.")
-        # except ValueError:
-        #     print("Don't forget to put an integer specifying who you are sending the message to!")
-        # else:
-        #     message = " ".join(self._args[2:])
-        #     try:
-        #         self.sockets[idx].send(message.encode())
-        #     except IndexError:
-        #         print(f"Index {idx} is not available. Type list to see what connections are available.")
+            pass
+            # print("Trying to send message to unexisting socket {}:{}".format(ip, port))
 
     def func_packets(self):
         print("Received {} packets".format(self.packet_count))
         self.packet_count = 0
+
+    def reset(self, msg):
+        self.get_topology_file() # restart local topology file
+        # server_ix, dest_ix = msg # servers who disconected
+        self.history_of_updates += [msg]
+        for _update in self.history_of_updates:
+            server_ix, dest_ix = _update['conn'][0], _update['conn'][1]
+            new_cost = _update['cost']
+            self.routing_table.loc[server_ix, dest_ix] = new_cost
+            self.routing_table.loc[dest_ix, server_ix] = new_cost
+        print("Update received")
+        # print("After Reset table\n{}".format(self.routing_table))
+
+    def notify_update(self, msg):
+        self.reset(msg)
+        for server_ix in self.neighbors:
+            ip = self.routing_table.at[server_ix, 'ip']
+            port = self.routing_table.at[server_ix, 'port']
+            self.send_message(ip, port, 'update', msg)
 
     def accept_wrapper(self, sock):
         """ Helper function for the server. Accepts connections from peers. """
@@ -227,13 +266,24 @@ class Router:
                 data.outb += recv_data
             else:
                 '''exit, update local df with infinity'''
-                _ip, _port = data.addr[0], data.addr[1]
+                _ip, _port = data.addr[0], float(data.addr[1])
                 print("closing connection to {}:{}".format(_ip, _port))
-                server_ix = self.routing_table.query('ip == @_ip & recv_port == @_port')
-                self.routing_table.at[self.id, server_ix] = float('inf')
+
+                r = self.routing_table.query('ip == @_ip & recv_port == @_port')
+                # print(r, type(r))
+                if r.shape[0] > 0:
+                    server_ix = r.index[0]
+                    # self.routing_table.at[self.id, server_ix] = float('inf')
+                    self.routing_table.at[server_ix, 'recv_port'] = float('inf')
+                    send_port = r.at[server_ix, 'port']
+                    self.neighbors.remove(server_ix)
+                    self.set_socket(_ip, send_port, None)
+                    update_msg = {'conn':[self.id, int(server_ix)], 'cost':float('inf')}
+                    self.notify_update(update_msg)
 
                 self.server_sel.unregister(sock)
                 sock.close()
+
         if mask & selectors.EVENT_WRITE:
             if data.outb:
                 # print(f"Message received from {data.addr[0]}")
@@ -241,15 +291,19 @@ class Router:
                 message = json.loads(data.outb.decode())
 
                 server_ix = int(message['id'])
-                self.routing_table.at[server_ix, 'recv_port'] = data.addr[1]
+                if hasattr(self, 'routing_table'):
+                    self.routing_table.at[server_ix, 'recv_port'] = data.addr[1]
 
-                if message['type'] == 'table':
-                    # receiving a table
-                    new_table = pd.read_json(message['data'])
-                    new_table.fillna(float('inf'), inplace=True)
-                    print("Received from Server {}".format(message['id']))
-                    self.update(server_ix, new_table)
-                    self.packet_count += 1
+                    if message['type'] == 'table':
+                        # receiving a table
+                        new_table = pd.read_json(message['data'])
+                        new_table.fillna(float('inf'), inplace=True)
+                        # print("Received from Server {}".format(message['id']))
+                        self.update(server_ix, new_table)
+                        self.packet_count += 1
+
+                    elif message['type'] == 'update':
+                        self.reset(message['data'])
 
                 try:
                     sent = sock.send(data.outb)  # Should be ready to write
@@ -272,6 +326,11 @@ class Router:
         self.server_sel.register(lsock, selectors.EVENT_READ, data=None)
         try:
             while self.is_running:
+                if hasattr(self, 't0') and (time.time() - self.t0 > self.update_interval):
+                    # periodic send
+                    self.func_step()
+                    self.t0 = time.time()
+
                 events = self.server_sel.select(timeout=1)
                 for key, mask in events:
                     if key.data is None:
@@ -302,12 +361,12 @@ class Router:
         # update info
         for c in range(self.num_servers):
             self.routing_table.at[self.id, c] = self._dist(c)
-        print("After update we have:\n{}".format(self.routing_table))
+        # print("After update we have:\n{}".format(self.routing_table))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("id", nargs=1)
+    # parser.add_argument("id", nargs=1)
     parser.add_argument("port", nargs=1)
     args = parser.parse_args()
 
-    Router(args.id[0], args.port[0])
+    Router(args.port[0])
